@@ -1,18 +1,72 @@
 ---
 
+- name: Get the username running the deploy
+  local_action: command whoami
+  register: running_user_cmd
+
+- name: Set username fact
+  set_fact:
+    running_user: "{{ running_user_cmd.stdout }}"
+
 - name: Install base packages
+  become: yes
   apt:
     name:
+      - curl
+      - git
       - ntp
       - rsync
       - vim
       - zsh
     state: present
 
+# Docker Installation
+- name: Add docker repo key
+  become: yes
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+- name: Set up Docker repo
+  become: yes
+  apt_repository:
+    repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic edge
+- name: Install docker
+  become: yes
+  apt:
+    name: docker-ce
+    state: present
+- name: Create docker group
+  become: yes
+  group:
+    name: docker
+    state: present
+- name: Add current user to groups
+  become: yes
+  user:
+    name: "{{ running_user }}"
+    groups:
+        - docker
+        - input
+    append: yes
+
 - name: Enable base services
+  become: yes
   service:
     name: "{{ item }}"
     state: started
     enabled: yes
   with_items:
+    - docker
     - ntp
+
+- name: Enable modules
+  become: yes
+  lineinfile:
+    path: /etc/modules
+    line: "{{ item }}"
+  with_items:
+    - bonding
+
+- name: Check out linux setup repo for update and kernel scripts
+  git:
+    repo: https://github.com/mnewswanger/linux-setup.git
+    dest: ~/linux-setup
