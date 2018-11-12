@@ -1,0 +1,38 @@
+---
+
+- name: Increase file watch limit
+  become: yes
+  copy:
+    dest: /etc/sysctl.d/file-watch-limits.conf
+    src: file-watch-limits.conf
+    force: no
+
+- name: Create backup user group
+  become: yes
+  group:
+    name: backup-users
+
+- name: Create backup backup backup users
+  become: yes
+  user:
+    name: "{{ item }}"
+    generate_ssh_key: yes
+  with_items:
+    - do-backups
+
+- name: Create backup folder
+  become: yes
+  file:
+    dest: "{{ item }}"
+    owner: do-backups
+    group: backup-users
+    state: directory
+  with_items:
+    - /mnt/backups/digital-ocean/do-webserver01/database
+    - /mnt/backups/digital-ocean/do-webserver01/websites
+
+- name: Create backup pull jobs
+  become: yes
+  copy:
+    src: digital-ocean-backups
+    dest: /etc/cron.d/digital-ocean-backups
