@@ -2,6 +2,36 @@
 
 ## Prerequisites
 
+### Disk Encryption
+
+#### Setup
+
+For non-system drives, encryption can be set up using luks.
+
+```
+sudo cryptsetup luksFormat -c aes-xts-plain64 -s 512 -h sha512 /dev/<disk>
+```
+
+Generate a key:
+
+```
+sudo dd if=/dev/urandom of=/etc/luks-keys/<key_name> bs=512 count=8
+```
+
+Add the key to the disk:
+
+```
+sudo cryptsetup -v luksAddKey /dev/<disk> /etc/luks-keys/<key_name>
+```
+
+#### Automount
+
+Get the device id and add to `/etc/crypttab` in the format `<name> UUID=<uuid> /etc/luks-keys/<key-name> luks`
+
+```
+sudo cryptsetup luksDump /dev/<disk> | grep "UUID"
+```
+
 ### Networking
 
 Network interfaces need to be set up before connecting via ssh.  The following configured the quad-port Intel NIC.  These settings should be placed in `/ect/network/interface`

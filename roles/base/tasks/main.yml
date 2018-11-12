@@ -14,6 +14,7 @@
     name:
       - curl
       - git
+      - htop
       - ntp
       - rsync
       - vim
@@ -64,6 +65,7 @@
     path: /etc/modules
     line: "{{ item }}"
   with_items:
+    - 8021q
     - bonding
 
 - name: Check out linux setup repo for update and kernel scripts

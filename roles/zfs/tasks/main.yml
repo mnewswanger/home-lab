@@ -1,0 +1,19 @@
+- name: Set up zfs ppa
+  become: yes
+  apt_repository:
+    repo: ppa:jonathonf/zfs
+- name: Install zfs
+  become: yes
+  apt:
+    name: 
+      - zfs-dkms
+      - zfsutils-linux
+    state: present
+
+- name: Enable modules
+  become: yes
+  lineinfile:
+    path: /etc/modules
+    line: "{{ item }}"
+  with_items:
+    - zfs
