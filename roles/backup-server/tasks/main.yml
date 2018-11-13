@@ -16,11 +16,14 @@
   become: yes
   user:
     name: "{{ item }}"
+    group: backup-users
     generate_ssh_key: yes
   with_items:
     - do-backups
+    - marie-backups
+    - mike-backups
 
-- name: Create backup folder
+- name: Create digital ocean backup folders
   become: yes
   file:
     dest: "{{ item }}"
@@ -30,6 +33,26 @@
   with_items:
     - /mnt/backups/digital-ocean/do-webserver01/database
     - /mnt/backups/digital-ocean/do-webserver01/websites
+
+- name: Create mike backup targets
+  become: yes
+  file:
+    dest: "{{ item }}"
+    owner: mike-backups
+    group: backup-users
+    state: directory
+  with_items:
+    - /mnt/backups/computers/war-machine.local/mike/
+
+- name: Create marie backup targets
+  become: yes
+  file:
+    dest: "{{ item }}"
+    owner: marie-backups
+    group: backup-users
+    state: directory
+  with_items:
+    - /mnt/backups/computers/mf-m4600/marie
 
 - name: Create backup pull jobs
   become: yes
