@@ -16,6 +16,7 @@
       - git
       - htop
       - ntp
+      - python-pip
       - rsync
       - vim
       - zsh
@@ -48,6 +49,16 @@
         - docker
         - input
     append: yes
+- name: Set max memory mount counts
+  become: yes
+  lineinfile:
+    path: /etc/sysctl.conf
+    line: vm.max_map_count=262144
+- name: Allow docker management by ansible
+  become: yes
+  pip:
+    name: docker
+    state: present
 
 - name: Enable base services
   become: yes

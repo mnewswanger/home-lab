@@ -1,2 +1,2 @@
-10 * * * * do-backups rsync -a backup_user@www.cindyfreyphotography.com:/backups/ /mnt/backups/digital-ocean/do-webserver01/database
-15 * * * * do-backups rsync -a --exclude www.cindyfreyphotography.com/public/photos/sessions/ backup_user@www.cindyfreyphotography.com:/var/www/ /mnt/backups/digital-ocean/do-webserver01/websites
+10 * * * * do-backups rsync -az --no-p --no-g --chmod=ugo=rwX backup_user@www.cindyfreyphotography.com:/backups/ /mnt/backups/digital-ocean/do-webserver01/database
+15 * * * * do-backups rsync -az --no-p --no-g --chmod=ugo=rwX --exclude www.cindyfreyphotography.com/public/photos/sessions/ backup_user@www.cindyfreyphotography.com:/var/www/ /mnt/backups/digital-ocean/do-webserver01/websites

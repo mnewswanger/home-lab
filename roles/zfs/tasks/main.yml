@@ -1,7 +1,10 @@
+---
+
 - name: Set up zfs ppa
   become: yes
   apt_repository:
     repo: ppa:jonathonf/zfs
+
 - name: Install zfs
   become: yes
   apt:

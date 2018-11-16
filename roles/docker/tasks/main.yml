@@ -1,0 +1,35 @@
+---
+
+# Elastic Stack setup
+- name: Set up docker network
+  become: yes
+  docker_network:
+    name: elastic-stack
+- name: Add elastic user
+  become: yes
+  user:
+    name: elastic
+    state: present
+- name: Set up data directories
+  become: yes
+  file:
+    path: /mnt/nvme-storage/elasticsearch/data
+    state: directory
+    owner: elastic
+    directory_mode: 0777
+
+- name: Set up Elasticsearch
+  become: yes
+  docker_container:
+    name: elasticsearch
+    env:
+      bootstrap.memory_lock: "true"
+      discovery.type: single-node
+      ES_JAVA_OPTS: -Xms2048m -Xmx2048m
+    hostname: elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.5.0
+    memory: 4g
+    memory_reservation: 4g
+    restart_policy: unless-stopped
+    volumes:
+      - /mnt/nvme-storage/elasticsearch/data:/usr/share/elasticsearch/data:rw
