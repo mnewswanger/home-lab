@@ -1,5 +1,49 @@
 ---
 
+# Docker Installation
+- name: Add docker repo key
+  become: yes
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+- name: Set up Docker repo
+  become: yes
+  apt_repository:
+    repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic edge
+- name: Install docker
+  become: yes
+  apt:
+    name: docker-ce
+    state: present
+- name: Create docker group
+  become: yes
+  group:
+    name: docker
+    state: present
+- name: Add current user to groups
+  become: yes
+  user:
+    name: "{{ running_user }}"
+    groups:
+        - docker
+        - input
+    append: yes
+- name: Set max memory mount counts
+  become: yes
+  lineinfile:
+    path: /etc/sysctl.conf
+    line: vm.max_map_count=262144
+- name: Allow docker management by ansible
+  become: yes
+  pip:
+    name: docker
+    state: present
+- name: Enable docker service
+  become: yes
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
 # Elastic Stack setup
 - name: Set up docker network
   become: yes
@@ -10,14 +54,28 @@
   user:
     name: elastic
     state: present
-- name: Set up data directories
+- name: Set up elastic directories
   become: yes
   file:
-    path: /mnt/nvme-storage/elasticsearch/data
+    path: "{{ item }}"
     state: directory
     owner: elastic
-    directory_mode: 0777
-
+    mode: 0777
+  with_items:
+    - /mnt/nvme-storage/elastic/config
+    - /mnt/nvme-storage/elastic/elasticsearch-data
+- name: Set elastic config files exist
+  become: yes
+  copy:
+    src: "{{ item }}"
+    dest: "/mnt/nvme-storage/elastic/config/{{ item }}"
+    owner: root
+    mode: 0644
+  with_items:
+    - elasticsearch-config.yml
+    - filebeat.yml
+    - kibana-config.yml
+    - metricbeat.yml
 - name: Set up Elasticsearch
   become: yes
   docker_container:
@@ -25,11 +83,74 @@
     env:
       bootstrap.memory_lock: "true"
       discovery.type: single-node
-      ES_JAVA_OPTS: -Xms2048m -Xmx2048m
+      ES_JAVA_OPTS: -Xms3072m -Xmx3072m
     hostname: elasticsearch
-    image: docker.elastic.co/elasticsearch/elasticsearch:6.5.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.5.1
     memory: 4g
-    memory_reservation: 4g
+    memory_reservation: 3g
+    networks:
+      - name: elastic-stack
+    ports:
+      - 9200:9200
+    purge_networks: yes
     restart_policy: unless-stopped
     volumes:
-      - /mnt/nvme-storage/elasticsearch/data:/usr/share/elasticsearch/data:rw
+      - /mnt/nvme-storage/elastic/elasticsearch-data:/usr/share/elasticsearch/data:rw
+      - /mnt/nvme-storage/elastic/config/elasticsearch-config.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+- name: Set up Kibana
+  become: yes
+  docker_container:
+    name: kibana
+    hostname: kibana
+    image: docker.elastic.co/kibana/kibana:6.5.1
+    memory: 1024m
+    memory_reservation: 1024m
+    networks:
+      - name: elastic-stack
+    ports:
+      - 5601:5601
+    purge_networks: yes
+    restart_policy: unless-stopped
+    volumes:
+      - /mnt/nvme-storage/elastic/config/kibana-config.yml:/usr/share/kibana/config/kibana.yml:ro
+- name: Set up Metricbeat
+  become: yes
+  docker_container:
+    name: metricbeat
+    command:
+        - -system.hostfs=/hostfs
+    hostname: metricbeat
+    image: docker.elastic.co/beats/metricbeat:6.5.1
+    memory: 128m
+    memory_reservation: 128m
+    networks:
+      - name: elastic-stack
+    restart_policy: unless-stopped
+    security_opts:
+      - apparmor:unconfined
+    volumes:
+      - /proc:/hostfs/proc:ro
+      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+      - /:/hostfs:ro
+      - /mnt/nvme-storage/elastic/config/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+# TODO: Add permissions to watch logs and docker
+# sudo setfacl -m u:1000:rx /var/lib/docker/
+# sudo setfacl -R -m d:u:1000:rx -m d:m:rx /var/lib/docker/containers/
+- name: Set up Filebeat
+  become: yes
+  docker_container:
+    name: filebeat
+    hostname: filebeat
+    image: docker.elastic.co/beats/filebeat:6.5.1
+    memory: 128m
+    memory_reservation: 128m
+    networks:
+      - name: elastic-stack
+    restart_policy: unless-stopped
+    user: root
+    volumes:
+      - /var/log:/hostfs/var/log:ro
+      - /var/lib/docker/containers:/hostfs/var/lib/docker/containers:ro
+      - /mnt/nvme-storage/elastic/config/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock

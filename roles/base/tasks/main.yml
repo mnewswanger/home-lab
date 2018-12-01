@@ -15,49 +15,12 @@
       - curl
       - git
       - htop
+      - lm-sensors
       - ntp
       - python-pip
       - rsync
       - vim
       - zsh
-    state: present
-
-# Docker Installation
-- name: Add docker repo key
-  become: yes
-  apt_key:
-    url: https://download.docker.com/linux/ubuntu/gpg
-- name: Set up Docker repo
-  become: yes
-  apt_repository:
-    repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic edge
-- name: Install docker
-  become: yes
-  apt:
-    name: docker-ce
-    state: present
-- name: Create docker group
-  become: yes
-  group:
-    name: docker
-    state: present
-- name: Add current user to groups
-  become: yes
-  user:
-    name: "{{ running_user }}"
-    groups:
-        - docker
-        - input
-    append: yes
-- name: Set max memory mount counts
-  become: yes
-  lineinfile:
-    path: /etc/sysctl.conf
-    line: vm.max_map_count=262144
-- name: Allow docker management by ansible
-  become: yes
-  pip:
-    name: docker
     state: present
 
 - name: Enable base services
@@ -67,7 +30,6 @@
     state: started
     enabled: yes
   with_items:
-    - docker
     - ntp
 
 - name: Enable modules
